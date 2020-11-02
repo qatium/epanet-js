@@ -7,10 +7,7 @@
   "files": [
     "dist"
   ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/modelcreate/epanet-js.git"
-  },
+  "repository": "https://github.com/qatium/epanet-js",
   "scripts": {
     "start": "tsdx watch",
     "build": "tsdx build",
@@ -52,5 +49,8 @@
     "tsdx": "^0.12.1",
     "tslib": "^1.10.0",
     "typescript": "^3.7.4"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   }
 }
