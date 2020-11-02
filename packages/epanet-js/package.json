@@ -1,4 +1,5 @@
 {
+  "name": "@qatium/epanet-js",
   "version": "0.3.0",
   "license": "MIT",
   "main": "dist/index.js",
@@ -40,7 +41,6 @@
     "singleQuote": true,
     "trailingComma": "es5"
   },
-  "name": "epanet-js",
   "description": "EPANET engine in javascript",
   "author": "Luke Butler",
   "module": "dist/epanet-js.esm.js",
