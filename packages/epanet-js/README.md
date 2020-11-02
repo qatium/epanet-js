@@ -127,3 +127,10 @@ If you are not familiar with the OWA-EPANET Toolkit API or EPANET it is worthwhi
 The epanet-js and @model-create/epanet-engine are [MIT licenced](https://github.com/modelcreate/epanet-js/blob/master/LICENSE).
 
 The hydraulic engine used within the epanet-js library is [OWA-EPANET](https://github.com/OpenWaterAnalytics/EPANET), which is [MIT licenced](https://github.com/OpenWaterAnalytics/EPANET/blob/dev/LICENSE), with contributed by the following [authors](https://github.com/OpenWaterAnalytics/EPANET/blob/dev/AUTHORS).
+
+## Publishing package
+
+```
+npm config set '//npm.pkg.github.com/:_authToken' "${GITHUB_PUBLISH_PACKAGES_TOKEN}"
+yarn publish
+```
