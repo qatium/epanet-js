@@ -16,7 +16,10 @@ enum LinkResultTypes {
   Friction,
 }
 
+const idBytes = 32;
+
 export interface LinkResults {
+  id: string;
   flow: number[];
   velcoity: number[];
   headloss: number[];
@@ -63,22 +66,24 @@ export function readBinary(results: Uint8Array): EpanetResults {
     reportingPeriods: view1.getInt32(results.byteLength - 12, true),
   };
 
-  const offsetIds = 884;
+  const offsetNodeIds = 884;
+  const offsetLinkIds = offsetNodeIds + idBytes * prolog.nodeCount;
   const offsetResults =
-    offsetIds +
+    offsetNodeIds +
     36 * prolog.nodeCount +
     52 * prolog.linkCount +
     8 * prolog.resAndTankCount +
     28 * prolog.pumpCount +
     4;
 
-  const nodeIds = getNodeIds(prolog, offsetIds, view1);
+  const nodeIds = getIds(offsetNodeIds, prolog.nodeCount, view1);
+  const linkIds = getIds(offsetLinkIds, prolog.linkCount, view1);
 
   const nodes: NodeResults[] = [...Array(prolog.nodeCount)].map((_, i) => {
     return getNodeResults(prolog, offsetResults, i, view1, nodeIds[i]);
   });
   const links: LinkResults[] = [...Array(prolog.linkCount)].map((_, i) => {
-    return getLinkResults(prolog, offsetResults, i, view1);
+    return getLinkResults(prolog, offsetResults, i, view1, linkIds[i]);
   });
 
   const data: EpanetResults = {
@@ -91,24 +96,18 @@ export function readBinary(results: Uint8Array): EpanetResults {
   return data;
 }
 
-const getNodeIds = (
-  prolog: EpanetProlog,
-  offsetIds: number,
-  dataView: DataView
-): string[] => {
-  const nodeIds: string[] = [];
-  const nodeCount = prolog.nodeCount;
-  const idBytes = 32;
+const getIds = (offset: number, count: number, dataView: DataView) => {
+  const ids: string[] = [];
 
-  for (let i = 0; i < nodeCount; i++) {
+  for (let i = 0; i < count; i++) {
     const arrayBuffer = dataView.buffer.slice(
-      offsetIds + idBytes * i,
-      offsetIds + idBytes * i + idBytes
+      offset + idBytes * i,
+      offset + idBytes * i + idBytes
     );
-    nodeIds.push(stringFrom(arrayBuffer));
+    ids.push(stringFrom(arrayBuffer));
   }
 
-  return nodeIds;
+  return ids;
 };
 
 const getNodeResults = (
@@ -151,9 +150,11 @@ const getLinkResults = (
   prolog: EpanetProlog,
   offsetResults: number,
   linkIndex: number,
-  dataView: DataView
+  dataView: DataView,
+  linkId: string
 ): LinkResults => {
   const linkResults = {
+    id: linkId,
     flow: [],
     velcoity: [],
     headloss: [],
