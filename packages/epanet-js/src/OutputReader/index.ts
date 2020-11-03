@@ -16,6 +16,12 @@ enum LinkResultTypes {
   Friction,
 }
 
+export enum NodeTypes {
+  Junction,
+  Reservoir,
+  Tank,
+}
+
 export enum LinkTypes {
   PipeWithCV,
   Pipe,
@@ -31,8 +37,8 @@ export enum LinkTypes {
 const idBytes = 32;
 
 export interface LinkResults {
-  type: LinkTypes;
   id: string;
+  type: LinkTypes;
   flow: number[];
   velocity: number[];
   headloss: number[];
@@ -46,6 +52,7 @@ export interface LinkResults {
 
 export interface NodeResults {
   id: string;
+  type: NodeTypes;
   demand: number[];
   head: number[];
   pressure: number[];
@@ -82,13 +89,15 @@ export function readBinary(results: Uint8Array): EpanetResults {
 
   const offsetNodeIds = 884;
   const offsetLinkIds = offsetNodeIds + idBytes * prolog.nodeCount;
+  const offsetLinkTypes =
+    offsetNodeIds + 32 * prolog.nodeCount + 40 * prolog.linkCount;
+  const offsetNodeIndexes =
+    offsetNodeIds + 32 * prolog.nodeCount + 44 * prolog.linkCount;
   const offsetLinkLengths =
     offsetNodeIds +
     36 * prolog.nodeCount +
     44 * prolog.linkCount +
     8 * prolog.resAndTankCount;
-  const offsetLinkTypes =
-    offsetNodeIds + 32 * prolog.nodeCount + 40 * prolog.linkCount;
   const offsetResults =
     offsetNodeIds +
     36 * prolog.nodeCount +
@@ -98,12 +107,25 @@ export function readBinary(results: Uint8Array): EpanetResults {
     4;
 
   const nodeIds = getIds(offsetNodeIds, prolog.nodeCount, view1);
+  const nodeTypes = getNodeTypes(
+    offsetNodeIndexes,
+    prolog.nodeCount,
+    prolog.resAndTankCount,
+    view1
+  );
   const linkIds = getIds(offsetLinkIds, prolog.linkCount, view1);
   const linkLengths = getLengths(offsetLinkLengths, prolog.linkCount, view1);
   const linkTypes = getLinkTypes(offsetLinkTypes, prolog.linkCount, view1);
 
   const nodes: NodeResults[] = [...Array(prolog.nodeCount)].map((_, i) => {
-    return getNodeResults(prolog, offsetResults, i, view1, nodeIds[i]);
+    return getNodeResults(
+      prolog,
+      offsetResults,
+      i,
+      view1,
+      nodeIds[i],
+      nodeTypes[i]
+    );
   });
   const links: LinkResults[] = [...Array(prolog.linkCount)].map((_, i) => {
     return getLinkResults(
@@ -161,6 +183,40 @@ const getLengths = (
   return lengths;
 };
 
+const getNodeTypes = (
+  offset: number,
+  nodeCount: number,
+  resAndTankCount: number,
+  dataView: DataView
+): NodeTypes[] => {
+  const types: NodeTypes[] = [];
+  const resAndTankIndexes: number[] = [];
+  const resAndTankAreas: number[] = [];
+
+  for (let i = 0; i < resAndTankCount; i++) {
+    resAndTankIndexes.push(dataView.getInt32(offset + 4 * i, true) - 1);
+    resAndTankAreas.push(
+      dataView.getFloat32(offset + 4 * resAndTankCount + 4 * i, true)
+    );
+  }
+
+  for (let i = 0; i < nodeCount; i++) {
+    if (!resAndTankIndexes.includes(i)) {
+      types.push(NodeTypes.Junction);
+      continue;
+    }
+
+    if (resAndTankAreas[resAndTankIndexes.indexOf(i)] === 0.0) {
+      types.push(NodeTypes.Reservoir);
+      continue;
+    }
+
+    types.push(NodeTypes.Tank);
+  }
+
+  return types;
+};
+
 const getLinkTypes = (
   offset: number,
   count: number,
@@ -182,10 +238,12 @@ const getNodeResults = (
   offsetResults: number,
   nodeIndex: number,
   dataView: DataView,
-  id: string
+  id: string,
+  type: NodeTypes
 ): NodeResults => {
   const nodeResults = {
     id,
+    type,
     demand: [],
     head: [],
     pressure: [],
