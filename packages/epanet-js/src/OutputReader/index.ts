@@ -28,6 +28,7 @@ export interface LinkResults {
   setting: number[];
   reactionRate: number[];
   friction: number[];
+  length: number;
 }
 
 export interface NodeResults {
@@ -68,6 +69,11 @@ export function readBinary(results: Uint8Array): EpanetResults {
 
   const offsetNodeIds = 884;
   const offsetLinkIds = offsetNodeIds + idBytes * prolog.nodeCount;
+  const offsetLinkLengths =
+    offsetNodeIds +
+    36 * prolog.nodeCount +
+    44 * prolog.linkCount +
+    8 * prolog.resAndTankCount;
   const offsetResults =
     offsetNodeIds +
     36 * prolog.nodeCount +
@@ -78,12 +84,20 @@ export function readBinary(results: Uint8Array): EpanetResults {
 
   const nodeIds = getIds(offsetNodeIds, prolog.nodeCount, view1);
   const linkIds = getIds(offsetLinkIds, prolog.linkCount, view1);
+  const linkLengths = getLengths(offsetLinkLengths, prolog.linkCount, view1);
 
   const nodes: NodeResults[] = [...Array(prolog.nodeCount)].map((_, i) => {
     return getNodeResults(prolog, offsetResults, i, view1, nodeIds[i]);
   });
   const links: LinkResults[] = [...Array(prolog.linkCount)].map((_, i) => {
-    return getLinkResults(prolog, offsetResults, i, view1, linkIds[i]);
+    return getLinkResults(
+      prolog,
+      offsetResults,
+      i,
+      view1,
+      linkIds[i],
+      linkLengths[i]
+    );
   });
 
   const data: EpanetResults = {
@@ -110,15 +124,27 @@ const getIds = (offset: number, count: number, dataView: DataView) => {
   return ids;
 };
 
+const getLengths = (offset: number, count: number, dataView: DataView) => {
+  const lengths: number[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const position = offset + 4 * i;
+    const length = dataView.getFloat32(position, true);
+    lengths.push(length);
+  }
+
+  return lengths;
+};
+
 const getNodeResults = (
   prolog: EpanetProlog,
   offsetResults: number,
   nodeIndex: number,
   dataView: DataView,
-  nodeId: string = ''
+  id: string = ''
 ): NodeResults => {
   const nodeResults = {
-    id: nodeId,
+    id,
     demand: [],
     head: [],
     pressure: [],
@@ -151,10 +177,11 @@ const getLinkResults = (
   offsetResults: number,
   linkIndex: number,
   dataView: DataView,
-  linkId: string
+  id: string,
+  length: number
 ): LinkResults => {
   const linkResults = {
-    id: linkId,
+    id: id,
     flow: [],
     velcoity: [],
     headloss: [],
@@ -163,6 +190,7 @@ const getLinkResults = (
     setting: [],
     reactionRate: [],
     friction: [],
+    length: length,
   };
 
   const result: LinkResults = [
