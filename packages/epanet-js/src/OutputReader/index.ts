@@ -156,13 +156,13 @@ const getIds = (
 ): string[] => {
   const ids: string[] = [];
 
-  for (let i = 0; i < count; i++) {
+  forEachIndex(count, index => {
     const arrayBuffer = dataView.buffer.slice(
-      offset + idBytes * i,
-      offset + idBytes * i + idBytes
+      offset + idBytes * index,
+      offset + idBytes * index + idBytes
     );
     ids.push(stringFrom(arrayBuffer));
-  }
+  });
 
   return ids;
 };
@@ -174,11 +174,11 @@ const getLengths = (
 ): number[] => {
   const lengths: number[] = [];
 
-  for (let i = 0; i < count; i++) {
-    const position = offset + 4 * i;
+  forEachIndex(count, index => {
+    const position = offset + 4 * index;
     const length = dataView.getFloat32(position, true);
     lengths.push(length);
-  }
+  });
 
   return lengths;
 };
@@ -190,31 +190,45 @@ const getNodeTypes = (
   dataView: DataView
 ): NodeTypes[] => {
   const types: NodeTypes[] = [];
-  const resAndTankIndexes: number[] = [];
-  const resAndTankAreas: number[] = [];
+  const [resAndTankIndexes, resAndTankAreas] = getResAndTanksData(
+    offset,
+    resAndTankCount,
+    dataView
+  );
 
-  for (let i = 0; i < resAndTankCount; i++) {
-    resAndTankIndexes.push(dataView.getInt32(offset + 4 * i, true) - 1);
-    resAndTankAreas.push(
-      dataView.getFloat32(offset + 4 * resAndTankCount + 4 * i, true)
-    );
-  }
-
-  for (let i = 0; i < nodeCount; i++) {
-    if (!resAndTankIndexes.includes(i)) {
+  forEachIndex(nodeCount, index => {
+    if (!resAndTankIndexes.includes(index)) {
       types.push(NodeTypes.Junction);
-      continue;
+      return;
     }
 
-    if (resAndTankAreas[resAndTankIndexes.indexOf(i)] === 0.0) {
+    if (resAndTankAreas[resAndTankIndexes.indexOf(index)] === 0.0) {
       types.push(NodeTypes.Reservoir);
-      continue;
+      return;
     }
 
     types.push(NodeTypes.Tank);
-  }
+  });
 
   return types;
+};
+
+const getResAndTanksData = (
+  offsetNodeIndexes: number,
+  count: number,
+  dataView: DataView
+): [number[], number[]] => {
+  const indexes: number[] = [];
+  const areas: number[] = [];
+  const offsetAreas = offsetNodeIndexes + 4 * count;
+
+  forEachIndex(count, index => {
+    const nodeIndex = dataView.getInt32(offsetNodeIndexes + 4 * index, true);
+    indexes.push(nodeIndex - 1);
+    areas.push(dataView.getFloat32(offsetAreas + 4 * index, true));
+  });
+
+  return [indexes, areas];
 };
 
 const getLinkTypes = (
@@ -224,11 +238,11 @@ const getLinkTypes = (
 ): LinkTypes[] => {
   const types: LinkTypes[] = [];
 
-  for (let i = 0; i < count; i++) {
-    const position = offset + 4 * i;
+  forEachIndex(count, index => {
+    const position = offset + 4 * index;
     const length = dataView.getInt32(position, true);
     types.push(length);
-  }
+  });
 
   return types;
 };
@@ -338,6 +352,12 @@ const getResultByteOffSet = (
       4 * resultType * typeCount
   );
   return answer;
+};
+
+const forEachIndex = (count: number, callback: (index: number) => void) => {
+  for (let i = 0; i < count; ++i) {
+    callback(i);
+  }
 };
 
 const stringFrom = (arrayBuffer: ArrayBuffer): string => {
