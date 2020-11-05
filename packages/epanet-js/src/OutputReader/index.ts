@@ -47,7 +47,6 @@ export interface LinkResults {
   setting: number[];
   reactionRate: number[];
   friction: number[];
-  length: number;
 }
 
 export interface NodeResults {
@@ -93,11 +92,6 @@ export function readBinary(results: Uint8Array): EpanetResults {
     offsetNodeIds + 32 * prolog.nodeCount + 40 * prolog.linkCount;
   const offsetNodeIndexes =
     offsetNodeIds + 32 * prolog.nodeCount + 44 * prolog.linkCount;
-  const offsetLinkLengths =
-    offsetNodeIds +
-    36 * prolog.nodeCount +
-    44 * prolog.linkCount +
-    8 * prolog.resAndTankCount;
   const offsetResults =
     offsetNodeIds +
     36 * prolog.nodeCount +
@@ -114,7 +108,6 @@ export function readBinary(results: Uint8Array): EpanetResults {
     view1
   );
   const linkIds = getIds(offsetLinkIds, prolog.linkCount, view1);
-  const linkLengths = getLengths(offsetLinkLengths, prolog.linkCount, view1);
   const linkTypes = getLinkTypes(offsetLinkTypes, prolog.linkCount, view1);
 
   const nodes: NodeResults[] = [...Array(prolog.nodeCount)].map((_, i) => {
@@ -134,7 +127,6 @@ export function readBinary(results: Uint8Array): EpanetResults {
       i,
       view1,
       linkIds[i],
-      linkLengths[i],
       linkTypes[i]
     );
   });
@@ -165,22 +157,6 @@ const getIds = (
   });
 
   return ids;
-};
-
-const getLengths = (
-  offset: number,
-  count: number,
-  dataView: DataView
-): number[] => {
-  const lengths: number[] = [];
-
-  forEachIndex(count, index => {
-    const position = offset + 4 * index;
-    const length = dataView.getFloat32(position, true);
-    lengths.push(length);
-  });
-
-  return lengths;
 };
 
 const getNodeTypes = (
@@ -240,8 +216,8 @@ const getLinkTypes = (
 
   forEachIndex(count, index => {
     const position = offset + 4 * index;
-    const length = dataView.getInt32(position, true);
-    types.push(length);
+    const type = dataView.getInt32(position, true);
+    types.push(type);
   });
 
   return types;
@@ -291,7 +267,6 @@ const getLinkResults = (
   linkIndex: number,
   dataView: DataView,
   id: string,
-  length: number,
   type: LinkTypes
 ): LinkResults => {
   const linkResults = {
@@ -305,7 +280,6 @@ const getLinkResults = (
     setting: [],
     reactionRate: [],
     friction: [],
-    length: length,
   };
 
   const result: LinkResults = [

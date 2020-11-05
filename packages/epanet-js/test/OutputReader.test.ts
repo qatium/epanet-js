@@ -21,15 +21,6 @@ describe('OutputReader', () => {
       expect(results.links[results.links.length - 1].id).toEqual('9');
     });
 
-    test('get link lengths', () => {
-      const bin = getBinaryResults();
-
-      const { results } = readBinary(bin);
-
-      expect(results.links[0].length).toEqual(10530);
-      expect(results.links[results.links.length - 1].length).toEqual(0);
-    });
-
     test('get link types', () => {
       const bin = getBinaryResults();
 
